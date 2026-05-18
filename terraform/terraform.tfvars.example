@@ -1,0 +1,7 @@
+# Copy this file to terraform.tfvars and customize values
+resource_group_name = "rg-aks-helm-project"
+location            = "eastus"
+acr_name            = "acrakshelmproject"  # Must be globally unique, lowercase alphanumeric only
+aks_name            = "aks-helm-project"
+node_count          = 2
+vm_size             = "Standard_D2s_v3"
