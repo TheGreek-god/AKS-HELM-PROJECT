@@ -1,16 +1,15 @@
-# Default values for the my-app Helm chart.
-# These values can be overridden during deployment using the --set flag or a custom values file.
+# Default values for the starbucks-app Helm chart.
 
 replicaCount: 1
 
 image:
-  repository: my-azure-acr/my-app  # Replace with your Azure Container Registry name
+  repository: greekgodacr.azurecr.io/starbucks-app
   pullPolicy: IfNotPresent
-  tag: "1.0.0"                   # The pipeline will override this with the Git SHA or build ID
+  tag: "latest"  # Use the existing image tag from your ACR
 
 service:
-  type: LoadBalancer             # The crucial change: Use LoadBalancer for external access
-  port: 80                       # The public port for the LoadBalancer
+  type: LoadBalancer
+  port: 80
 
 container:
-  port: 3000                     # The internal port that your application listens on
+  port: 3000

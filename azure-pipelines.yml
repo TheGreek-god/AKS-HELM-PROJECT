@@ -1,4 +1,4 @@
-# azure-pipelines.yml
+# yaml-language-server: $schema=https://raw.githubusercontent.com/microsoft/azure-pipelines-vscode/master/service-schema.json
 
 trigger:
   - main
@@ -7,55 +7,111 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  imageRepository: 'my-app' # The name of your Docker image in ACR
-  dockerRegistryServiceConnection: 'MyAzureACR' # Your Azure Container Registry service connection name
-  aksServiceConnection: 'Azure service connection' # Your AKS cluster service connection name
-  helmChartPath: 'helm/my-app' # The path to your Helm chart directory
-  helmReleaseName: 'my-app-release' # The name for your Helm deployment release
-  namespace: 'default' # The Kubernetes namespace to deploy to
+  dockerHubImage: 'greekgod659/starbucks:latest'
+  acrName: 'greekgodacr.azurecr.io'
+  imageRepository: 'starbucks-app'
+  imageTag: 'latest'
+  dockerRegistryServiceConnection: 'MyAzureACR'
+  aksServiceConnection: 'Azure service connection'
+  helmChartPath: 'helm/my-app'
+  helmReleaseName: 'starbucks-app-release'
+  namespace: 'default'
 
 stages:
-- stage: BuildAndPublish
-  displayName: Build and Publish Artifacts
+- stage: ProvisionInfrastructure
+  displayName: Provision Infrastructure with Terraform
   jobs:
-  - job: BuildJob
-    displayName: Build Container and Helm Chart
+  - job: TerraformJob
+    displayName: Deploy Azure Resources
     steps:
+    - task: TerraformInstaller@0
+      displayName: Install Terraform
+      inputs:
+        terraformVersion: 'latest'
+
+    - task: TerraformTaskV4@4
+      displayName: Terraform Init
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+
+    - task: TerraformTaskV4@4
+      displayName: Terraform Plan
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        environmentServiceNameAzureRM: '$(aksServiceConnection)'
+
+    - task: TerraformTaskV4@4
+      displayName: Terraform Apply
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        environmentServiceNameAzureRM: '$(aksServiceConnection)'
+
+- stage: PushImageToACR
+  displayName: Push Docker Image to ACR
+  dependsOn: ProvisionInfrastructure
+  condition: succeeded()
+  jobs:
+  - job: PushImageJob
+    displayName: Pull from Docker Hub and Push to ACR
+    steps:
+    - task: Bash@3
+      displayName: Pull and Tag Image
+      inputs:
+        targetType: 'inline'
+        script: |
+          docker pull $(dockerHubImage)
+          docker tag $(dockerHubImage) $(acrName)/$(imageRepository):$(imageTag)
+
     - task: Docker@2
-      displayName: Build and Push Docker Image
+      displayName: Push Image to ACR
       inputs:
         containerRegistry: '$(dockerRegistryServiceConnection)'
         repository: '$(imageRepository)'
-        command: 'buildAndPush'
-        Dockerfile: 'app/Dockerfile'
+        command: 'push'
         tags: |
-          $(Build.BuildId)
-          latest
+          $(imageTag)
 
+- stage: PackageHelm
+  displayName: Package Helm Chart
+  dependsOn: PushImageToACR
+  condition: succeeded()
+  jobs:
+  - job: PackageJob
+    displayName: Package Helm Chart
+    steps:
     - task: HelmInstaller@1
       displayName: Install Helm
       inputs:
         helmVersionToInstall: '3.11.0'
 
-    - script: |
-        helm package $(helmChartPath) --version $(Build.BuildId)
+    - task: Bash@3
       displayName: Package Helm Chart
+      inputs:
+        targetType: 'inline'
+        script: |
+          helm package $(helmChartPath) --version $(Build.BuildId)
 
     - task: PublishBuildArtifacts@1
       displayName: Publish Helm Chart Artifact
       inputs:
-        PathtoPublish: '$(System.DefaultWorkingDirectory)/my-app-$(Build.BuildId).tgz' # Path to the packaged chart
+        PathtoPublish: '$(System.DefaultWorkingDirectory)/starbucks-app-$(Build.BuildId).tgz'
         ArtifactName: 'helm-chart'
         publishLocation: 'Container'
 
 - stage: DeployToAKS
   displayName: Deploy to AKS
-  dependsOn: BuildAndPublish
+  dependsOn: PackageHelm
   condition: succeeded()
   jobs:
   - deployment: DeployJob
     displayName: Deploy with Helm to AKS
-    environment: 'MyAKSCluster' # Reference your AKS environment resource in Azure DevOps
+    environment: 'MyAKSCluster'
     strategy:
       runOnce:
         deploy:
@@ -74,15 +130,16 @@ stages:
               helmVersionToInstall: '3.11.0'
 
           - task: HelmDeploy@0
-            displayName: Helm Upgrade/Install
+            displayName: Helm Upgrade Install
             inputs:
-              azureSubscription: '$(aksServiceConnection)'
-              azureResourceGroup: 'demo' # Replace with your AKS resource group
-              kubernetesCluster: 'my-aks-cluster' # Replace with your AKS cluster name
+              connectionType: 'Azure Resource Manager'
+              azureSubscriptionEndpoint: '$(aksServiceConnection)'
+              azureResourceGroup: 'rg-aks-helm-project'
+              kubernetesCluster: 'greekgodcluster'
               command: 'upgrade'
               chartType: 'FilePath'
-              chartPath: '$(System.DefaultWorkingDirectory)/helm-chart/my-app-$(Build.BuildId).tgz'
+              chartPath: '$(System.DefaultWorkingDirectory)/helm-chart/starbucks-app-$(Build.BuildId).tgz'
               releaseName: '$(helmReleaseName)'
               namespace: '$(namespace)'
-              arguments: '--install' # Use --install to create the release if it doesn't exist
-              overrideValues: 'image.tag=$(Build.BuildId),image.repository=myacr1212.azurecr.io/$(imageRepository)'
+              arguments: '--install'
+              overrideValues: 'image.tag=$(imageTag),image.repository=$(acrName)/$(imageRepository)'

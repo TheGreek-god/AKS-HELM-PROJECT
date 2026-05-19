@@ -1,5 +1,5 @@
 apiVersion: v2
-name: my-app
+name: starbucks-app
 description: A Helm chart for a simple web application
 type: application
 version: 0.1.0
