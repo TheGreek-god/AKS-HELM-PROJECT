@@ -12,7 +12,7 @@ variables:
   imageRepository: 'starbucks-app'
   imageTag: 'latest'
   dockerRegistryServiceConnection: 'MyAzureACR'
-  aksServiceConnection: 'Azure service connection'
+  aksServiceConnection: 'azuredevops-azureportal-service-connection'
   helmChartPath: 'helm/my-app'
   helmReleaseName: 'starbucks-app-release'
   namespace: 'default'
