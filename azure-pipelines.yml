@@ -28,29 +28,50 @@ stages:
       inputs:
         terraformVersion: 'latest'
 
-    - task: TerraformTaskV4@4
+    - task: AzureCLI@2
       displayName: Terraform Init
       inputs:
-        provider: 'azurerm'
-        command: 'init'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        backendServiceArm: '$(aksServiceConnection)'
+        azureSubscription: '$(aksServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        addSpnToEnvironment: true
+        inlineScript: |
+          export ARM_CLIENT_ID=$servicePrincipalId
+          export ARM_CLIENT_SECRET=$servicePrincipalKey
+          export ARM_TENANT_ID=$tenantId
+          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          cd $(System.DefaultWorkingDirectory)/terraform
+          terraform init
 
-    - task: TerraformTaskV4@4
+    - task: AzureCLI@2
       displayName: Terraform Plan
       inputs:
-        provider: 'azurerm'
-        command: 'plan'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        environmentServiceNameAzureRM: '$(aksServiceConnection)'
+        azureSubscription: '$(aksServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        addSpnToEnvironment: true
+        inlineScript: |
+          export ARM_CLIENT_ID=$servicePrincipalId
+          export ARM_CLIENT_SECRET=$servicePrincipalKey
+          export ARM_TENANT_ID=$tenantId
+          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          cd $(System.DefaultWorkingDirectory)/terraform
+          terraform plan -out=tfplan
 
-    - task: TerraformTaskV4@4
+    - task: AzureCLI@2
       displayName: Terraform Apply
       inputs:
-        provider: 'azurerm'
-        command: 'apply'
-        workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
-        environmentServiceNameAzureRM: '$(aksServiceConnection)'
+        azureSubscription: '$(aksServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        addSpnToEnvironment: true
+        inlineScript: |
+          export ARM_CLIENT_ID=$servicePrincipalId
+          export ARM_CLIENT_SECRET=$servicePrincipalKey
+          export ARM_TENANT_ID=$tenantId
+          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          cd $(System.DefaultWorkingDirectory)/terraform
+          terraform apply -auto-approve tfplan
 
 - stage: PushImageToACR
   displayName: Push Docker Image to ACR
