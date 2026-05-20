@@ -11,7 +11,6 @@ variables:
   acrName: 'greekgodacr.azurecr.io'
   imageRepository: 'starbucks-app'
   imageTag: 'latest'
-  dockerRegistryServiceConnection: 'MyAzureACR'
   aksServiceConnection: 'azuredevops-azureportal-service-connection'
   helmChartPath: 'helm/my-app'
   helmReleaseName: 'starbucks-app-release'
@@ -60,22 +59,17 @@ stages:
   - job: PushImageJob
     displayName: Pull from Docker Hub and Push to ACR
     steps:
-    - task: Bash@3
-      displayName: Pull and Tag Image
+    - task: AzureCLI@2
+      displayName: Pull, Tag and Push Image to ACR
       inputs:
-        targetType: 'inline'
-        script: |
+        azureSubscription: '$(aksServiceConnection)'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
           docker pull $(dockerHubImage)
           docker tag $(dockerHubImage) $(acrName)/$(imageRepository):$(imageTag)
-
-    - task: Docker@2
-      displayName: Push Image to ACR
-      inputs:
-        containerRegistry: '$(dockerRegistryServiceConnection)'
-        repository: '$(imageRepository)'
-        command: 'push'
-        tags: |
-          $(imageTag)
+          az acr login --name $(acrName)
+          docker push $(acrName)/$(imageRepository):$(imageTag)
 
 - stage: PackageHelm
   displayName: Package Helm Chart
