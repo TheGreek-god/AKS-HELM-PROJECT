@@ -34,6 +34,7 @@ stages:
         provider: 'azurerm'
         command: 'init'
         workingDirectory: '$(System.DefaultWorkingDirectory)/terraform'
+        backendServiceArm: '$(aksServiceConnection)'
 
     - task: TerraformTaskV4@4
       displayName: Terraform Plan
