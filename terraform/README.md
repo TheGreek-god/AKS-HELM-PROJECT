@@ -31,21 +31,21 @@
 
 5. **Configure kubectl**
    ```bash
-   az aks get-credentials --resource-group rg-aks-helm-project --name aks-helm-project
+   az aks get-credentials --resource-group rg-aks-helm-project --name greekgodcluster
    ```
 
 6. **Build and push Docker image to ACR**
    ```bash
-   az acr login --name acrakshelmproject
-   docker build -t acrakshelmproject.azurecr.io/my-app:latest ./app
-   docker push acrakshelmproject.azurecr.io/my-app:latest
+   az acr login --name greekgodacr
+   docker build -t greekgodacr.azurecr.io/starbucks-app:latest ./app
+   docker push greekgodacr.azurecr.io/starbucks-app:latest
    ```
 
 ## Resources Created
-- Resource Group
-- Azure Container Registry (ACR) with AcrPull role for AKS
-- Azure Kubernetes Service (AKS) cluster with 2 nodes
-- Network configuration with Azure CNI
+- Resource Group: `rg-aks-helm-project` (canadacentral)
+- Azure Container Registry: `greekgodacr`
+- Azure Kubernetes Service: `greekgodcluster` (2x Standard_D2s_v3, Azure CNI)
+- AcrPull role assignment for AKS to ACR
 
 ## Clean Up
 ```bash

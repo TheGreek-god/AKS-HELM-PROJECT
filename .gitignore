@@ -1,0 +1,18 @@
+# Terraform
+terraform/.terraform*
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+*.tfplan
+
+# Helm packages
+*.tgz
+
+# Sensitive credentials
+endpoint.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
